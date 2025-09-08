@@ -1,0 +1,23 @@
+services:
+  Marketplace.MongoConfig:
+    factory:
+      class: ../../../../../Contexts/Marketplace/Shared/infrastructure/persistence/mongo/MongoClientFactory
+      method: 'createConfig'
+
+  Marketplace.ConnectionManager:
+    factory:
+      class: ../../../../../Contexts/Shared/infrastructure/persistence/mongo/MongoClientFactory
+      method: 'createClient'
+    arguments: ['marketplace', '@Marketplace.MongoConfig']
+
+  Marketplace.Products.domain.ProductRepository:
+    class: ../../../../../Contexts/Marketplace/Products/infrastructure/persistence/MongoProductRepository
+    arguments: ["@Marketplace.ConnectionManager"]
+
+  Marketplace.Products.application.ProductCreator:
+    class: ../../../../../Contexts/Marketplace/Products/application/Create/ProductCreator
+    arguments: ["@Marketplace.Products.domain.ProductRepository"]
+
+  Marketplace.Products.application.ProductDelete:
+    class: ../../../../../Contexts/Marketplace/Products/application/Delete/ProductDelete
+    arguments: ['@Marketplace.Products.domain.ProductRepository']

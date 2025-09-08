@@ -1,0 +1,12 @@
+services:
+  Apps.marketplace.controllers.StatusGetController:
+    class: ../../controllers/StatusGetController
+    arguments: []
+
+  Apps.marketplace.controllers.ProductPutController:
+    class: ../../controllers/ProductPutController
+    arguments: ['@Marketplace.Products.application.ProductCreator']
+
+  Apps.marketplace.controllers.ProductDeleteController:
+    class: ../../controllers/ProductDeleteController
+    arguments: ['@Marketplace.Products.application.ProductDelete']
