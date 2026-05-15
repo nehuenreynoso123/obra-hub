@@ -1,7 +1,7 @@
 services:
   Marketplace.MongoConfig:
     factory:
-      class: ../../../../../Contexts/Marketplace/Shared/infrastructure/persistence/mongo/MongoClientFactory
+      class: ../../../../../Contexts/Mooc/Shared/infrastructure/persistence/mongo/MongoConfigFactory
       method: 'createConfig'
 
   Marketplace.ConnectionManager:

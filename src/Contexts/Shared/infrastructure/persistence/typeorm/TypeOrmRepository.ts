@@ -1,12 +1,12 @@
-import { Connection, EntitySchema, Repository } from 'typeorm';
+import { DataSource, EntitySchema, Repository } from 'typeorm';
 import { AggregateRoot } from '../../../domain/AggregateRoot';
 
 export abstract class TypeOrmRepository<T extends AggregateRoot> {
-  constructor(private _client: Promise<Connection>) {}
+  constructor(private _client: Promise<DataSource>) {}
 
   protected abstract entitySchema(): EntitySchema<T>;
 
-  protected client(): Promise<Connection> {
+  protected client(): Promise<DataSource> {
     return this._client;
   }
 
