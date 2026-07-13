@@ -5,3 +5,24 @@ logs/
 data
 test-results.xml
 /src/Contexts/Mooc/Courses/infrastructure/persistence/courses.*.repo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+build/
+coverage/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Sensitive files
+*.pem
+*.key
+*.cert

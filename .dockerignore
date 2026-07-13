@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+
+# Version control
+.git
+
+# Environment and secrets
+.env
+.env.*
+
+# Logs
+*.log
+
+# Build artifacts
+dist
+build
+coverage
+
+# Sensitive files
+*.pem
+*.key
+*.cert
+
+# Tests and docs
+tests
+*.md
+
+# Data and temp
+data
+.tmp
+logs
+
+# Docker
+docker-compose.yml
+
+# Editor and formatting
+.prettierrc
+.prettierignore
