@@ -1,0 +1,45 @@
+services:
+  Auth.infrastructure.TypeOrmConfig:
+    factory:
+      class: ../../../../../Contexts/Mooc/Shared/infrastructure/persistence/postgre/TypeOrmConfigFactory
+      method: 'createConfig'
+
+  Auth.infrastructure.DataSource:
+    factory:
+      class: ../../../../../Contexts/Shared/infrastructure/persistence/typeorm/TypeOrmClientFactory
+      method: 'createClient'
+    arguments: ['auth', '@Auth.infrastructure.TypeOrmConfig']
+
+  Auth.infrastructure.AccessTokenSecret:
+    factory:
+      class: ../../../../../Contexts/Auth/infrastructure/AuthConfigFactory
+      method: 'createAccessTokenSecret'
+
+  Auth.infrastructure.RefreshTokenSecret:
+    factory:
+      class: ../../../../../Contexts/Auth/infrastructure/AuthConfigFactory
+      method: 'createRefreshTokenSecret'
+
+  Auth.domain.AuthUserRepository:
+    class: ../../../../../Contexts/Auth/infrastructure/persistence/typeorm/TypeOrmAuthUserRepository
+    arguments: ['@Auth.infrastructure.DataSource']
+
+  Auth.domain.PasswordHasher:
+    class: ../../../../../Contexts/Auth/infrastructure/BCryptPasswordHasher
+    arguments: []
+
+  Auth.domain.TokenGenerator:
+    class: ../../../../../Contexts/Auth/infrastructure/JwtTokenGenerator
+    arguments: ['@Auth.infrastructure.AccessTokenSecret', '@Auth.infrastructure.RefreshTokenSecret']
+
+  Auth.application.SignUp:
+    class: ../../../../../Contexts/Auth/application/SignUp/SignUp
+    arguments: ['@Auth.domain.AuthUserRepository', '@Auth.domain.PasswordHasher']
+
+  Auth.application.SignIn:
+    class: ../../../../../Contexts/Auth/application/SignIn/SignIn
+    arguments: ['@Auth.domain.AuthUserRepository', '@Auth.domain.PasswordHasher', '@Auth.domain.TokenGenerator']
+
+  Auth.application.RefreshToken:
+    class: ../../../../../Contexts/Auth/application/RefreshToken/RefreshToken
+    arguments: ['@Auth.domain.TokenGenerator']

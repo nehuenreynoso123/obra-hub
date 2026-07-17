@@ -6,6 +6,9 @@ import Router from 'express-promise-router';
 import helmet from 'helmet';
 import * as http from 'http';
 import httpStatus from 'http-status';
+import { createJwtAuthGuardMiddleware } from '../../../Contexts/Auth/infrastructure/JwtAuthGuardMiddleware';
+import { TokenGenerator } from '../../../Contexts/Auth/domain/TokenGenerator';
+import container from './dependency-injection';
 import { registerRoutes } from './routes';
 
 export class Server {
@@ -25,6 +28,10 @@ export class Server {
     this.express.use(compress());
     const router = Router();
     router.use(errorHandler());
+
+    const tokenGenerator: TokenGenerator = container.get('Auth.domain.TokenGenerator');
+    router.use(createJwtAuthGuardMiddleware(tokenGenerator));
+
     this.express.use(router);
 
     registerRoutes(router);

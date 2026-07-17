@@ -7,6 +7,8 @@ import helmet from 'helmet';
 import * as http from 'http';
 import httpStatus from 'http-status';
 import Logger from '../../../Contexts/Shared/domain/Logger';
+import { createJwtAuthGuardMiddleware } from '../../../Contexts/Auth/infrastructure/JwtAuthGuardMiddleware';
+import { TokenGenerator } from '../../../Contexts/Auth/domain/TokenGenerator';
 import container from './dependency-injection';
 import { registerRoutes } from './routes';
 import cors from 'cors';
@@ -31,6 +33,10 @@ export class Server {
     const router = Router();
     router.use(cors());
     router.use(errorHandler());
+
+    const tokenGenerator: TokenGenerator = container.get('Auth.domain.TokenGenerator');
+    router.use(createJwtAuthGuardMiddleware(tokenGenerator));
+
     this.express.use(router);
     registerRoutes(router);
 

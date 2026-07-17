@@ -1,3 +1,4 @@
 allowBuilds:
+  bcrypt: true
   core-js-pure: true
   es5-ext: true

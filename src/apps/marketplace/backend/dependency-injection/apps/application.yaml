@@ -10,3 +10,15 @@ services:
   Apps.marketplace.controllers.ProductDeleteController:
     class: ../../controllers/ProductDeleteController
     arguments: ['@Marketplace.Products.application.ProductDelete']
+
+  Apps.marketplace.controllers.Auth.SignUpPostController:
+    class: ../../controllers/Auth/SignUpPostController
+    arguments: ['@Auth.application.SignUp']
+
+  Apps.marketplace.controllers.Auth.SignInPostController:
+    class: ../../controllers/Auth/SignInPostController
+    arguments: ['@Auth.application.SignIn']
+
+  Apps.marketplace.controllers.Auth.RefreshTokenPostController:
+    class: ../../controllers/Auth/RefreshTokenPostController
+    arguments: ['@Auth.application.RefreshToken']
