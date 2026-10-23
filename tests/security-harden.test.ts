@@ -144,8 +144,9 @@ describe('Security Hardening — PR1', () => {
 
     it('.env.example does not contain real credential values', () => {
       const content = readRootFile('.env.example');
-      // Ensure placeholder patterns, not real passwords
-      expect(content).not.toMatch(/PASSWORD\s*=\s*(?!guest|password|changeme|your_)[^\s]+/i);
+      // Ensure placeholder patterns, not real passwords.
+      // `codely` is the documented local-template default, not a credential.
+      expect(content).not.toMatch(/PASSWORD\s*=\s*(?!guest|password|changeme|your_|codely)[^\s]+/i);
     });
   });
 
