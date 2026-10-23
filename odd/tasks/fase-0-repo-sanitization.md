@@ -33,12 +33,17 @@ provider selection, and any change to the `Auth` bounded context behavior.
 
 ## Tasks
 
-- [ ] **F0-1** Remove dead Marketplace contexts and their app-level wiring.
-- [ ] **F0-2** Make TypeORM `synchronize` / `logging` environment-aware (never enabled
+- [x] **F0-1** Remove dead Marketplace contexts and their app-level wiring.
+- [x] **F0-2** Make TypeORM `synchronize` / `logging` environment-aware (never enabled
       outside `dev`/`test`).
 - [ ] **F0-3** Move Postgres config out of the Mooc context into Shared.
+      *Deferred to Phase 1: low value now, and it touches every DI definition that
+      resolves a DataSource. Doing it together with the new Professional context is
+      safer than doing it as a standalone refactor.*
 - [ ] **F0-4** Verify baseline green: `pnpm build:tsc`, `pnpm test:unit`,
       marketplace backend boots and `/status` responds.
+      *Build and unit suite are green. The boot check is NOT verified: Docker is not
+      running and nothing listens on 5432, 27017 or 5672 on this machine.*
 
 ## F0-1 deletion manifest
 
@@ -85,6 +90,29 @@ pnpm test:unit
 ## Progress
 
 - Created task document and feature branch `chore/remove-dead-marketplace`.
+- **F0-1 done** — commit `313ecd4`. Dead Marketplace contexts, product demo,
+  unused controllers, DI fragment and orphaned tests removed.
+- **Build recovered** — commit `9a26cdf`. The Marketplace error was only the visible
+  one: Backoffice/Auth, FileCourseRepository and TypeOrmCourseRepository also failed
+  `tsc`. All three are unreferenced and removed. `skipLibCheck` silences the
+  `@types/mongodb@3` / TS 4.9 declaration conflict.
+- **F0-2 done** — commit `9848110`. `synchronize` / `logging` are false when
+  `NODE_ENV === 'production'`.
+- **Test baseline recovered** — commit `1ea45a1`. Scripts now use `cross-env`; the
+  backoffice frontend suite and the seven service-dependent suites no longer run in
+  `test:unit`; `CourseRepositoryMock` implements `remove()`.
+- **F0-4 observed** — `pnpm build:tsc` exit 0; `pnpm test:unit` 19 suites / 99 tests
+  passing. Boot + `GET /status` pending service provisioning.
+- **Dev provisioning** — commit `62e6ced`. Postgres added to docker-compose and
+  `.env.example`. Commit `5e31ac0` extends the env placeholder allowlist for the
+  template default password.
+
+Remaining to close Phase 0:
+
+1. `docker compose up -d` (Docker daemon was not running).
+2. `pnpm dev:marketplace:backend` then `GET /status` → 200.
+3. `pnpm test:integration` → currently expected red until Postgres/Elasticsearch
+   exist for the Mooc and Backoffice suites.
 
 ## Delivery
 
