@@ -3,6 +3,11 @@ import { TypeOrmConfig } from './TypeOrmConfig';
 
 export class TypeOrmClientFactory {
   static async createClient(contextName: string, config: TypeOrmConfig): Promise<DataSource> {
+    // Schema synchronization and query logging are development conveniences only.
+    // Outside development they must be opt-in: production schemas change through
+    // migrations, never through an implicit diff at boot.
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const dataSource = new DataSource({
       name: contextName,
       type: 'postgres',
@@ -12,8 +17,8 @@ export class TypeOrmClientFactory {
       password: config.password,
       database: config.database,
       entities: [__dirname + '/../../../../**/**/infrastructure/persistence/typeorm/*{.js,.ts}'],
-      synchronize: true,
-      logging: true
+      synchronize: !isProduction,
+      logging: !isProduction
     });
 
     await dataSource.initialize();
