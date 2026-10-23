@@ -8,6 +8,7 @@
     "sourceMap": false,
     "rootDir": ".",
     "strict": true,
+    "skipLibCheck": true,
     "noEmit": false,
     "resolveJsonModule": true,
     "noUnusedLocals": true,
