@@ -4,11 +4,13 @@ import { CourseRepository } from '../../../../../src/Contexts/Mooc/Courses/domai
 export class CourseRepositoryMock implements CourseRepository {
   private saveMock: jest.Mock;
   private searchAllMock: jest.Mock;
+  private removeMock: jest.Mock;
   private courses: Array<Course> = [];
 
   constructor() {
     this.saveMock = jest.fn();
     this.searchAllMock = jest.fn();
+    this.removeMock = jest.fn();
   }
 
   async save(course: Course): Promise<void> {
@@ -32,4 +34,7 @@ export class CourseRepositoryMock implements CourseRepository {
     return this.courses;
   }
 
+  async remove(courseId: string): Promise<void> {
+    this.removeMock(courseId);
+  }
 }
