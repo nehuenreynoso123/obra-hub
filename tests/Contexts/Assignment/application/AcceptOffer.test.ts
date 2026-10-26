@@ -14,6 +14,20 @@ import { Zone } from '../../../../src/Contexts/Professional/domain/Zone';
 import { Category } from '../../../../src/Contexts/Professional/domain/Category';
 import { Nullable } from '../../../../src/Contexts/Shared/domain/Nullable';
 import { InvalidArgumentError } from '../../../../src/Contexts/Shared/domain/value-object/InvalidArgumentError';
+import { TransactionManager } from '../../../../src/Contexts/Shared/domain/TransactionManager';
+
+class RecordingTransactionManager implements TransactionManager {
+  readonly events: string[] = [];
+
+  async run<T>(work: () => Promise<T>): Promise<T> {
+    this.events.push('enter');
+    try {
+      return await work();
+    } finally {
+      this.events.push('exit');
+    }
+  }
+}
 
 class InMemoryAssignmentRepository implements AssignmentRepository {
   private readonly assignments: Assignment[] = [];
@@ -56,6 +70,10 @@ class InMemoryOfferRepository implements OfferRepository {
     return this.offers.find(offer => offer.id.value === id.value) ?? null;
   }
 
+  async findByIdForUpdate(id: OfferId): Promise<Nullable<Offer>> {
+    return this.offers.find(offer => offer.id.value === id.value) ?? null;
+  }
+
   async findPendingByJobAndProfessional(jobId: JobId, professionalId: ProfessionalId): Promise<Nullable<Offer>> {
     return (
       this.offers.find(
@@ -72,6 +90,7 @@ class InMemoryOfferRepository implements OfferRepository {
 
 class InMemoryJobRepository implements JobRepository {
   private readonly jobs: Job[] = [];
+  readonly lockedJobIds: string[] = [];
 
   async save(job: Job): Promise<void> {
     const existingIndex = this.jobs.findIndex(j => j.id.value === job.id.value);
@@ -83,6 +102,11 @@ class InMemoryJobRepository implements JobRepository {
   }
 
   async findById(id: JobId): Promise<Nullable<Job>> {
+    return this.jobs.find(job => job.id.value === id.value) ?? null;
+  }
+
+  async findByIdForUpdate(id: JobId): Promise<Nullable<Job>> {
+    this.lockedJobIds.push(id.value);
     return this.jobs.find(job => job.id.value === id.value) ?? null;
   }
 
@@ -107,6 +131,7 @@ describe('AcceptOffer', () => {
   const clientId = '6a7b8c9d-0e1f-4a2b-9c3d-4e5f6a7b8c9d';
 
   it('happy path accepts the offer, moves the job to ASSIGNED, creates an ACTIVE assignment with professionalId from the offer and clientId from the job, and returns its primitives', async () => {
+    const transactionManager = new RecordingTransactionManager();
     const assignmentRepository = new InMemoryAssignmentRepository();
     const offerRepository = new InMemoryOfferRepository();
     const jobRepository = new InMemoryJobRepository();
@@ -117,10 +142,12 @@ describe('AcceptOffer', () => {
     const offer = Offer.create(new OfferId(offerId), new JobId(jobId), new ProfessionalId(professionalId), 'I can fix it', '1500');
     offerRepository.save(offer);
 
-    const acceptOffer = new AcceptOffer(assignmentRepository, offerRepository, jobRepository);
+    const acceptOffer = new AcceptOffer(transactionManager, assignmentRepository, offerRepository, jobRepository);
 
     const primitives = await acceptOffer.run(assignmentId, offerId);
 
+    expect(transactionManager.events).toEqual(['enter', 'exit']);
+    expect(jobRepository.lockedJobIds).toEqual([jobId]);
     expect(offerRepository.saved()[0].toPrimitives().status).toBe('ACCEPTED');
     expect(jobRepository.saved()[0].toPrimitives().status).toBe('ASSIGNED');
     expect(assignmentRepository.saved()[0].toPrimitives()).toEqual({
@@ -141,12 +168,26 @@ describe('AcceptOffer', () => {
     });
   });
 
-  it('throws when the offer does not exist', async () => {
+  it('runs the whole flow inside the transaction even when it throws', async () => {
+    const transactionManager = new RecordingTransactionManager();
     const assignmentRepository = new InMemoryAssignmentRepository();
     const offerRepository = new InMemoryOfferRepository();
     const jobRepository = new InMemoryJobRepository();
 
-    const acceptOffer = new AcceptOffer(assignmentRepository, offerRepository, jobRepository);
+    const acceptOffer = new AcceptOffer(transactionManager, assignmentRepository, offerRepository, jobRepository);
+
+    await expect(acceptOffer.run(assignmentId, offerId)).rejects.toThrow(InvalidArgumentError);
+
+    expect(transactionManager.events).toEqual(['enter', 'exit']);
+  });
+
+  it('throws when the offer does not exist', async () => {
+    const transactionManager = new RecordingTransactionManager();
+    const assignmentRepository = new InMemoryAssignmentRepository();
+    const offerRepository = new InMemoryOfferRepository();
+    const jobRepository = new InMemoryJobRepository();
+
+    const acceptOffer = new AcceptOffer(transactionManager, assignmentRepository, offerRepository, jobRepository);
 
     await expect(acceptOffer.run(assignmentId, offerId)).rejects.toThrow(InvalidArgumentError);
     await expect(acceptOffer.run(assignmentId, offerId)).rejects.toThrow(`The Offer <${offerId}> does not exist`);
@@ -157,6 +198,7 @@ describe('AcceptOffer', () => {
   });
 
   it('throws when the offer is already ACCEPTED', async () => {
+    const transactionManager = new RecordingTransactionManager();
     const assignmentRepository = new InMemoryAssignmentRepository();
     const offerRepository = new InMemoryOfferRepository();
     const jobRepository = new InMemoryJobRepository();
@@ -168,7 +210,7 @@ describe('AcceptOffer', () => {
     offer.accept();
     offerRepository.save(offer);
 
-    const acceptOffer = new AcceptOffer(assignmentRepository, offerRepository, jobRepository);
+    const acceptOffer = new AcceptOffer(transactionManager, assignmentRepository, offerRepository, jobRepository);
 
     await expect(acceptOffer.run(assignmentId, offerId)).rejects.toThrow(`The Offer <${offerId}> is not pending`);
 
@@ -176,6 +218,7 @@ describe('AcceptOffer', () => {
   });
 
   it('throws when the job does not exist', async () => {
+    const transactionManager = new RecordingTransactionManager();
     const assignmentRepository = new InMemoryAssignmentRepository();
     const offerRepository = new InMemoryOfferRepository();
     const jobRepository = new InMemoryJobRepository();
@@ -183,7 +226,7 @@ describe('AcceptOffer', () => {
     const offer = Offer.create(new OfferId(offerId), new JobId(jobId), new ProfessionalId(professionalId), 'I can fix it', '1500');
     (offerRepository as any).offers.push(offer);
 
-    const acceptOffer = new AcceptOffer(assignmentRepository, offerRepository, jobRepository);
+    const acceptOffer = new AcceptOffer(transactionManager, assignmentRepository, offerRepository, jobRepository);
 
     await expect(acceptOffer.run(assignmentId, offerId)).rejects.toThrow(`The Job <${jobId}> does not exist`);
 
@@ -192,6 +235,7 @@ describe('AcceptOffer', () => {
   });
 
   it('throws when the job is already ASSIGNED', async () => {
+    const transactionManager = new RecordingTransactionManager();
     const assignmentRepository = new InMemoryAssignmentRepository();
     const offerRepository = new InMemoryOfferRepository();
     const jobRepository = new InMemoryJobRepository();
@@ -203,7 +247,7 @@ describe('AcceptOffer', () => {
     const offer = Offer.create(new OfferId(offerId), new JobId(jobId), new ProfessionalId(professionalId), 'I can fix it', '1500');
     offerRepository.save(offer);
 
-    const acceptOffer = new AcceptOffer(assignmentRepository, offerRepository, jobRepository);
+    const acceptOffer = new AcceptOffer(transactionManager, assignmentRepository, offerRepository, jobRepository);
 
     await expect(acceptOffer.run(assignmentId, offerId)).rejects.toThrow(`The Job <${jobId}> cannot be assigned`);
 
@@ -211,6 +255,7 @@ describe('AcceptOffer', () => {
   });
 
   it('throws when the offer already has an assignment', async () => {
+    const transactionManager = new RecordingTransactionManager();
     const assignmentRepository = new InMemoryAssignmentRepository();
     const offerRepository = new InMemoryOfferRepository();
     const jobRepository = new InMemoryJobRepository();
@@ -229,7 +274,7 @@ describe('AcceptOffer', () => {
       Assignment.create(new AssignmentId(assignmentId), new AssignmentJobId(jobId), new AssignmentOfferId(offerId), new AssignmentProfessionalId(professionalId), new AssignmentClientId(clientId))
     );
 
-    const acceptOffer = new AcceptOffer(assignmentRepository, offerRepository, jobRepository);
+    const acceptOffer = new AcceptOffer(transactionManager, assignmentRepository, offerRepository, jobRepository);
 
     await expect(acceptOffer.run(assignmentId, offerId)).rejects.toThrow(`The Offer <${offerId}> already has an assignment`);
 

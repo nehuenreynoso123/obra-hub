@@ -14,4 +14,4 @@ services:
 
   Assignment.application.AcceptOffer:
     class: ../../../../../Contexts/Assignment/application/Accept/AcceptOffer
-    arguments: ['@Assignment.domain.AssignmentRepository', '@Offer.domain.OfferRepository', '@Job.domain.JobRepository']
+    arguments: ['@Shared.infrastructure.TransactionManager', '@Assignment.domain.AssignmentRepository', '@Offer.domain.OfferRepository', '@Job.domain.JobRepository']

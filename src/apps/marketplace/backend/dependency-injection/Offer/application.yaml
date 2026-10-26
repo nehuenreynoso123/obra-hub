@@ -6,8 +6,8 @@ services:
 
   Offer.application.CreateOffer:
     class: ../../../../../Contexts/Offer/application/Create/CreateOffer
-    arguments: ['@Offer.domain.OfferRepository', '@Job.domain.JobRepository']
+    arguments: ['@Shared.infrastructure.TransactionManager', '@Offer.domain.OfferRepository', '@Job.domain.JobRepository']
 
   Offer.application.WithdrawOffer:
     class: ../../../../../Contexts/Offer/application/Withdraw/WithdrawOffer
-    arguments: ['@Offer.domain.OfferRepository']
+    arguments: ['@Shared.infrastructure.TransactionManager', '@Offer.domain.OfferRepository']

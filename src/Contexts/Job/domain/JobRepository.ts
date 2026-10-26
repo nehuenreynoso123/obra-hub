@@ -7,5 +7,9 @@ import { Nullable } from '../../Shared/domain/Nullable';
 export interface JobRepository {
   save(job: Job): Promise<void>;
   findById(id: JobId): Promise<Nullable<Job>>;
+  /**
+   * Must be called inside a transaction; takes a pessimistic_write row lock.
+   */
+  findByIdForUpdate(id: JobId): Promise<Nullable<Job>>;
   findOpenByZoneAndCategory(zone: Zone, category: Category): Promise<Job[]>;
 }

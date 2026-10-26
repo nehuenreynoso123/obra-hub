@@ -1,0 +1,5 @@
+services:
+  Shared.infrastructure.TransactionManager:
+    # The marketplace app reuses the Auth-owned Postgres DataSource until the shared config move in F0-3.
+    class: ../../../../../Contexts/Shared/infrastructure/persistence/typeorm/TypeOrmTransactionManager
+    arguments: ['@Auth.infrastructure.DataSource']

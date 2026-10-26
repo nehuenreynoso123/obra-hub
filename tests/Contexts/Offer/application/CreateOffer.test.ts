@@ -10,6 +10,13 @@ import { Zone } from '../../../../src/Contexts/Professional/domain/Zone';
 import { Category } from '../../../../src/Contexts/Professional/domain/Category';
 import { ProfessionalId } from '../../../../src/Contexts/Offer/domain/ProfessionalId';
 import { Nullable } from '../../../../src/Contexts/Shared/domain/Nullable';
+import { TransactionManager } from '../../../../src/Contexts/Shared/domain/TransactionManager';
+
+class InMemoryTransactionManager implements TransactionManager {
+  async run<T>(work: () => Promise<T>): Promise<T> {
+    return work();
+  }
+}
 
 class InMemoryOfferRepository implements OfferRepository {
   private readonly offers: Offer[] = [];
@@ -24,6 +31,10 @@ class InMemoryOfferRepository implements OfferRepository {
   }
 
   async findById(id: OfferId): Promise<Nullable<Offer>> {
+    return this.offers.find(offer => offer.id.value === id.value) ?? null;
+  }
+
+  async findByIdForUpdate(id: OfferId): Promise<Nullable<Offer>> {
     return this.offers.find(offer => offer.id.value === id.value) ?? null;
   }
 
@@ -43,12 +54,18 @@ class InMemoryOfferRepository implements OfferRepository {
 
 class InMemoryJobRepository implements JobRepository {
   private readonly jobs: Job[] = [];
+  readonly lockedJobIds: string[] = [];
 
   async save(job: Job): Promise<void> {
     this.jobs.push(job);
   }
 
   async findById(id: JobId): Promise<Nullable<Job>> {
+    return this.jobs.find(job => job.id.value === id.value) ?? null;
+  }
+
+  async findByIdForUpdate(id: JobId): Promise<Nullable<Job>> {
+    this.lockedJobIds.push(id.value);
     return this.jobs.find(job => job.id.value === id.value) ?? null;
   }
 
@@ -63,6 +80,7 @@ class InMemoryJobRepository implements JobRepository {
 
 describe('CreateOffer', () => {
   it('saves a PENDING offer with the given primitives', async () => {
+    const transactionManager = new InMemoryTransactionManager();
     const offerRepository = new InMemoryOfferRepository();
     const jobRepository = new InMemoryJobRepository();
     const job = Job.create(
@@ -76,7 +94,7 @@ describe('CreateOffer', () => {
     );
     jobRepository.addJob(job);
 
-    const createOffer = new CreateOffer(offerRepository, jobRepository);
+    const createOffer = new CreateOffer(transactionManager, offerRepository, jobRepository);
 
     await createOffer.run(
       '9d0e1f2a-3b4c-4d5e-8f6a-7b8c9d0e1f2a',
@@ -98,10 +116,39 @@ describe('CreateOffer', () => {
     });
   });
 
-  it('rejects when the job does not exist', async () => {
+  it('locks the job before creating the offer', async () => {
+    const transactionManager = new InMemoryTransactionManager();
     const offerRepository = new InMemoryOfferRepository();
     const jobRepository = new InMemoryJobRepository();
-    const createOffer = new CreateOffer(offerRepository, jobRepository);
+    const job = Job.create(
+      new JobId('4f0a5e6c-1d2b-4c3d-8e9f-0a1b2c3d4e5f'),
+      new ClientId('6a7b8c9d-0e1f-4a2b-9c3d-4e5f6a7b8c9d'),
+      'Fix the kitchen sink',
+      'The sink leaks under the cabinet',
+      new Zone('palermo'),
+      new Category('plumbing'),
+      '1000-2000'
+    );
+    jobRepository.addJob(job);
+
+    const createOffer = new CreateOffer(transactionManager, offerRepository, jobRepository);
+
+    await createOffer.run(
+      '9d0e1f2a-3b4c-4d5e-8f6a-7b8c9d0e1f2a',
+      '4f0a5e6c-1d2b-4c3d-8e9f-0a1b2c3d4e5f',
+      '0e1f2a3b-4c5d-4e6f-9a7b-8c9d0e1f2a3b',
+      'I can fix it this week',
+      '1500'
+    );
+
+    expect(jobRepository.lockedJobIds).toEqual(['4f0a5e6c-1d2b-4c3d-8e9f-0a1b2c3d4e5f']);
+  });
+
+  it('rejects when the job does not exist', async () => {
+    const transactionManager = new InMemoryTransactionManager();
+    const offerRepository = new InMemoryOfferRepository();
+    const jobRepository = new InMemoryJobRepository();
+    const createOffer = new CreateOffer(transactionManager, offerRepository, jobRepository);
 
     await expect(
       createOffer.run(
@@ -115,6 +162,7 @@ describe('CreateOffer', () => {
   });
 
   it('rejects when the job is not OPEN (use an ASSIGNED job)', async () => {
+    const transactionManager = new InMemoryTransactionManager();
     const offerRepository = new InMemoryOfferRepository();
     const jobRepository = new InMemoryJobRepository();
     const job = Job.create(
@@ -129,7 +177,7 @@ describe('CreateOffer', () => {
     job.assign();
     jobRepository.addJob(job);
 
-    const createOffer = new CreateOffer(offerRepository, jobRepository);
+    const createOffer = new CreateOffer(transactionManager, offerRepository, jobRepository);
 
     await expect(
       createOffer.run(
@@ -143,6 +191,7 @@ describe('CreateOffer', () => {
   });
 
   it('rejects when a pending offer already exists for the same job+professional', async () => {
+    const transactionManager = new InMemoryTransactionManager();
     const offerRepository = new InMemoryOfferRepository();
     const jobRepository = new InMemoryJobRepository();
     const job = Job.create(
@@ -156,7 +205,7 @@ describe('CreateOffer', () => {
     );
     jobRepository.addJob(job);
 
-    const createOffer = new CreateOffer(offerRepository, jobRepository);
+    const createOffer = new CreateOffer(transactionManager, offerRepository, jobRepository);
     await createOffer.run(
       '9d0e1f2a-3b4c-4d5e-8f6a-7b8c9d0e1f2a',
       '4f0a5e6c-1d2b-4c3d-8e9f-0a1b2c3d4e5f',
@@ -177,6 +226,7 @@ describe('CreateOffer', () => {
   });
 
   it('accepts a fresh offer after a previous one was withdrawn', async () => {
+    const transactionManager = new InMemoryTransactionManager();
     const offerRepository = new InMemoryOfferRepository();
     const jobRepository = new InMemoryJobRepository();
     const job = Job.create(
@@ -190,7 +240,7 @@ describe('CreateOffer', () => {
     );
     jobRepository.addJob(job);
 
-    const createOffer = new CreateOffer(offerRepository, jobRepository);
+    const createOffer = new CreateOffer(transactionManager, offerRepository, jobRepository);
     await createOffer.run(
       '9d0e1f2a-3b4c-4d5e-8f6a-7b8c9d0e1f2a',
       '4f0a5e6c-1d2b-4c3d-8e9f-0a1b2c3d4e5f',

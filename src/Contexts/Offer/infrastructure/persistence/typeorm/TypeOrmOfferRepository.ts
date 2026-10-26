@@ -33,6 +33,20 @@ export class TypeOrmOfferRepository extends TypeOrmRepository<Offer> implements 
     return this.fromEntity(entity);
   }
 
+  async findByIdForUpdate(id: OfferId): Promise<Offer | null> {
+    const repository = await this.repository();
+    const entity = await repository.findOne({
+      where: { id: id.value } as any,
+      lock: { mode: 'pessimistic_write' }
+    });
+
+    if (!entity) {
+      return null;
+    }
+
+    return this.fromEntity(entity);
+  }
+
   async findPendingByJobAndProfessional(jobId: JobId, professionalId: ProfessionalId): Promise<Offer | null> {
     const repository = await this.repository();
     const entity = await repository.findOne({

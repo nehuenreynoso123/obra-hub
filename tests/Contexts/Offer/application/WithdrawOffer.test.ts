@@ -6,6 +6,13 @@ import { JobId } from '../../../../src/Contexts/Offer/domain/JobId';
 import { ProfessionalId } from '../../../../src/Contexts/Offer/domain/ProfessionalId';
 import { Nullable } from '../../../../src/Contexts/Shared/domain/Nullable';
 import { InvalidArgumentError } from '../../../../src/Contexts/Shared/domain/value-object/InvalidArgumentError';
+import { TransactionManager } from '../../../../src/Contexts/Shared/domain/TransactionManager';
+
+class InMemoryTransactionManager implements TransactionManager {
+  async run<T>(work: () => Promise<T>): Promise<T> {
+    return work();
+  }
+}
 
 class InMemoryOfferRepository implements OfferRepository {
   private readonly offers: Offer[] = [];
@@ -20,6 +27,10 @@ class InMemoryOfferRepository implements OfferRepository {
   }
 
   async findById(id: OfferId): Promise<Nullable<Offer>> {
+    return this.offers.find(offer => offer.id.value === id.value) ?? null;
+  }
+
+  async findByIdForUpdate(id: OfferId): Promise<Nullable<Offer>> {
     return this.offers.find(offer => offer.id.value === id.value) ?? null;
   }
 
@@ -43,6 +54,7 @@ class InMemoryOfferRepository implements OfferRepository {
 
 describe('WithdrawOffer', () => {
   it('PENDING offer becomes WITHDRAWN and is saved', async () => {
+    const transactionManager = new InMemoryTransactionManager();
     const repository = new InMemoryOfferRepository();
     const offer = Offer.create(
       new OfferId('9d0e1f2a-3b4c-4d5e-8f6a-7b8c9d0e1f2a'),
@@ -53,13 +65,14 @@ describe('WithdrawOffer', () => {
     );
     repository.addOffer(offer);
 
-    const withdrawOffer = new WithdrawOffer(repository);
+    const withdrawOffer = new WithdrawOffer(transactionManager, repository);
     await withdrawOffer.run('9d0e1f2a-3b4c-4d5e-8f6a-7b8c9d0e1f2a');
 
     expect(repository.savedOffers()[0].toPrimitives().status).toBe('WITHDRAWN');
   });
 
   it('an ACCEPTED offer throws InvalidArgumentError and nothing is saved', async () => {
+    const transactionManager = new InMemoryTransactionManager();
     const repository = new InMemoryOfferRepository();
     const offer = Offer.create(
       new OfferId('9d0e1f2a-3b4c-4d5e-8f6a-7b8c9d0e1f2a'),
@@ -72,15 +85,16 @@ describe('WithdrawOffer', () => {
     repository.addOffer(offer);
     const savedBefore = repository.savedOffers().length;
 
-    const withdrawOffer = new WithdrawOffer(repository);
+    const withdrawOffer = new WithdrawOffer(transactionManager, repository);
     await expect(withdrawOffer.run('9d0e1f2a-3b4c-4d5e-8f6a-7b8c9d0e1f2a')).rejects.toThrow(InvalidArgumentError);
 
     expect(repository.savedOffers()).toHaveLength(savedBefore);
   });
 
   it('unknown id throws InvalidArgumentError', async () => {
+    const transactionManager = new InMemoryTransactionManager();
     const repository = new InMemoryOfferRepository();
-    const withdrawOffer = new WithdrawOffer(repository);
+    const withdrawOffer = new WithdrawOffer(transactionManager, repository);
     await expect(withdrawOffer.run('9d0e1f2a-3b4c-4d5e-8f6a-7b8c9d0e1f2a')).rejects.toThrow(InvalidArgumentError);
   });
 });

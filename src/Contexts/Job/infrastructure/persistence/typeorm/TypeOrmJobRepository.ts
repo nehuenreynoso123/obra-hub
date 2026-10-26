@@ -33,6 +33,20 @@ export class TypeOrmJobRepository extends TypeOrmRepository<Job> implements JobR
     return this.fromEntity(entity);
   }
 
+  async findByIdForUpdate(id: JobId): Promise<Job | null> {
+    const repository = await this.repository();
+    const entity = await repository.findOne({
+      where: { id: id.value } as any,
+      lock: { mode: 'pessimistic_write' }
+    });
+
+    if (!entity) {
+      return null;
+    }
+
+    return this.fromEntity(entity);
+  }
+
   async findOpenByZoneAndCategory(zone: Zone, category: Category): Promise<Job[]> {
     const repository = await this.repository();
     const entities = await repository.find({

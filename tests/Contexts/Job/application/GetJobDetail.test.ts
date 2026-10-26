@@ -17,6 +17,10 @@ class InMemoryJobRepository implements JobRepository {
     return this.jobs.find(job => job.id.value === id.value) ?? null;
   }
 
+  async findByIdForUpdate(id: JobId): Promise<Nullable<Job>> {
+    return this.jobs.find(job => job.id.value === id.value) ?? null;
+  }
+
   async findOpenByZoneAndCategory(zone: Zone, category: Category): Promise<Job[]> {
     return this.jobs.filter(
       job => job.zone.value === zone.value && job.category.value === category.value && job.isOpen()
