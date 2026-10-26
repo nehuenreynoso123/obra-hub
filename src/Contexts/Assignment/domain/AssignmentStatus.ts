@@ -38,6 +38,10 @@ export class AssignmentStatus extends EnumValueObject<AssignmentStatusEnum> {
     return new AssignmentStatus(AssignmentStatusEnum.CANCELLED);
   }
 
+  isActive(): boolean {
+    return this.value === AssignmentStatusEnum.ACTIVE;
+  }
+
   isCompleted(): boolean {
     return this.value === AssignmentStatusEnum.COMPLETED;
   }

@@ -1,0 +1,17 @@
+services:
+  Assignment.domain.AssignmentRepository:
+    # The marketplace app reuses the Auth-owned Postgres DataSource until the shared config move in F0-3.
+    class: ../../../../../Contexts/Assignment/infrastructure/persistence/typeorm/TypeOrmAssignmentRepository
+    arguments: ['@Auth.infrastructure.DataSource']
+
+  Assignment.application.CreateAssignment:
+    class: ../../../../../Contexts/Assignment/application/Create/CreateAssignment
+    arguments: ['@Assignment.domain.AssignmentRepository']
+
+  Assignment.application.CompleteAssignment:
+    class: ../../../../../Contexts/Assignment/application/Complete/CompleteAssignment
+    arguments: ['@Assignment.domain.AssignmentRepository']
+
+  Assignment.application.AcceptOffer:
+    class: ../../../../../Contexts/Assignment/application/Accept/AcceptOffer
+    arguments: ['@Assignment.domain.AssignmentRepository', '@Offer.domain.OfferRepository', '@Job.domain.JobRepository']
