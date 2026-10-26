@@ -3,3 +3,4 @@ imports:
   - { resource: ./Auth/application.yaml }
   - { resource: ./Professional/application.yaml }
   - { resource: ./Job/application.yaml }
+  - { resource: ./Offer/application.yaml }
